@@ -107,6 +107,48 @@ export default function TodoList() {
     await deleteDoc(doc(db, 'tasks', id));
     setTasks(tasks.filter((task) => task.id !== id));
   };
+  const editTask = async (id: string, currentText: string, currentDeadline: string): Promise<void> => {
+    const formattedDeadline = new Date(currentDeadline).toISOString().slice(0, 16);
+  
+    const { value: formValues } = await Swal.fire({
+      title: 'Edit Tugas',
+      html: `
+        <input id="swal-input1" class="swal2-input" placeholder="Nama tugas" value="${currentText}">
+        <input id="swal-input2" type="datetime-local" class="swal2-input" value="${formattedDeadline}">
+      `,
+      focusConfirm: false,
+      showCancelButton: true,
+      confirmButtonText: 'Simpan',
+      cancelButtonText: 'Batal',
+      preConfirm: () => {
+        const input1 = (document.getElementById('swal-input1') as HTMLInputElement)?.value;
+        const input2 = (document.getElementById('swal-input2') as HTMLInputElement)?.value;
+        if (!input1 || !input2) {
+          Swal.showValidationMessage('Semua bidang wajib diisi');
+        }
+        return [input1, input2];
+      },
+    });
+  
+    if (formValues && formValues[0] && formValues[1]) {
+      const [updatedText, updatedDeadline] = formValues;
+  
+      const taskRef = doc(db, 'tasks', id);
+      await updateDoc(taskRef, {
+        text: updatedText,
+        deadline: updatedDeadline,
+      });
+  
+      setTasks((prevTasks) =>
+        prevTasks.map((task) =>
+          task.id === id
+            ? { ...task, text: updatedText, deadline: updatedDeadline }
+            : task
+        )
+      );
+    }
+  };
+  
 
   return (
     <div className="max-w-md mx-auto mt-10 p-4 bg-white shadow-md rounded-lg">
@@ -149,13 +191,7 @@ export default function TodoList() {
                     }`}
                   >
                     {task.text}
-                  </span>
-                  <button
-                    onClick={() => deleteTask(task.id)}
-                    className="text-white p-1 rounded bg-red-600 hover:bg-red-800"
-                  >
-                    Hapus
-                  </button>
+                  </span> 
                 </div>
                 <p className="text-sm text-gray-700">
                   Deadline: {new Date(task.deadline).toLocaleString()}
@@ -163,6 +199,21 @@ export default function TodoList() {
                 <p className="text-xs font-semibold text-gray-700">
                   ⏳ {timeRemaining[task.id] || 'Menghitung...'}
                 </p>
+                <div className="flex gap-2 mt-1">
+                    <button
+                      onClick={() => editTask(task.id, task.text, task.deadline)}
+                      className="text-sm bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-full shadow"
+                    >
+                      ✏️ Edit
+                    </button>
+                    <button
+                      onClick={() => deleteTask(task.id)}
+                      className="text-sm bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-full shadow"
+                    >
+                      🗑️ Hapus
+                    </button>
+                  </div>
+                
               </motion.li>
             );
           })}
