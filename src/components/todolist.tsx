@@ -74,13 +74,15 @@ export default function TodoList() {
       confirmButtonText: 'Tambah',
       cancelButtonText: 'Batal',
       preConfirm: () => {
-        return [
-          (document.getElementById('swal-input1') as HTMLInputElement)?.value,
-          (document.getElementById('swal-input2') as HTMLInputElement)?.value,
-        ];
+        const text = (document.getElementById('swal-input1') as HTMLInputElement)?.value;
+        const deadline = (document.getElementById('swal-input2') as HTMLInputElement)?.value;
+        if (!text || !deadline) {
+          Swal.showValidationMessage('Semua bidang wajib diisi');
+        }
+        return [text, deadline];
       },
     });
-
+  
     if (formValues && formValues[0] && formValues[1]) {
       const newTask: Omit<Task, 'id'> = {
         text: formValues[0],
@@ -89,9 +91,18 @@ export default function TodoList() {
       };
       const docRef = await addDoc(collection(db, 'tasks'), newTask);
       setTasks([...tasks, { id: docRef.id, ...newTask }]);
+  
+      // ✅ Pop-up berhasil dengan tombol OK
+      await Swal.fire({
+        icon: 'success',
+        title: 'Berhasil!',
+        text: 'Tugas berhasil ditambahkan.',
+        confirmButtonText: 'OK',
+      });
     }
   };
-
+  
+  
   const toggleTask = async (id: string): Promise<void> => {
     const updatedTasks = tasks.map((task) =>
       task.id === id ? { ...task, completed: !task.completed } : task
@@ -104,9 +115,31 @@ export default function TodoList() {
   };
 
   const deleteTask = async (id: string): Promise<void> => {
-    await deleteDoc(doc(db, 'tasks', id));
-    setTasks(tasks.filter((task) => task.id !== id));
+    const result = await Swal.fire({
+      title: 'Yakin ingin menghapus tugas ini?',
+      text: 'Tindakan ini tidak bisa dibatalkan!',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Ya, hapus!',
+      cancelButtonText: 'Batal',
+    });
+  
+    if (result.isConfirmed) {
+      await deleteDoc(doc(db, 'tasks', id));
+      setTasks(tasks.filter((task) => task.id !== id));
+  
+      // ✅ Pop-up berhasil dihapus
+      await Swal.fire({
+        icon: 'success',
+        title: 'Terhapus!',
+        text: 'Tugas berhasil dihapus.',
+        confirmButtonText: 'OK',
+      });
+    }
   };
+  
   const editTask = async (id: string, currentText: string, currentDeadline: string): Promise<void> => {
     const formattedDeadline = new Date(currentDeadline).toISOString().slice(0, 16);
   
@@ -213,7 +246,8 @@ export default function TodoList() {
                       🗑️ Hapus
                     </button>
                   </div>
-                
+                  
+
               </motion.li>
             );
           })}
